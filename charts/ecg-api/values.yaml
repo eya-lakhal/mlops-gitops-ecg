@@ -1,0 +1,95 @@
+# Valeurs par défaut du chart. Chaque environnement les surcharge dans deploy/envs/<env>/values.yaml.
+
+replicaCount: 2
+
+image:
+  repository: ghcr.io/eya-lakhal/ecg-api
+  # Vide = appVersion du Chart.yaml. En GitOps, la CI écrit ici un tag immuable (sha-xxxxxxx).
+  tag: ""
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  name: ""
+  # L'API n'appelle pas l'API Kubernetes : pas de jeton monté dans le Pod.
+  automount: false
+
+podAnnotations: {}
+podLabels: {}
+
+# Sécurité au niveau du Pod : cohérente avec l'image (UID/GID 10001).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 10001
+  runAsGroup: 10001
+  fsGroup: 10001
+  seccompProfile:
+    type: RuntimeDefault
+
+# Sécurité au niveau du conteneur : système de fichiers en lecture seule, aucune capability.
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: ["ALL"]
+
+service:
+  type: ClusterIP
+  port: 80
+
+containerPort: 8000
+
+env:
+  TORCH_NUM_THREADS: "1"
+
+# Requests = ce que le scheduler réserve (et la base du calcul du HPA en Phase 6).
+# Limits = plafond ; dépasser la mémoire => OOMKilled.
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: "1"
+    memory: 1Gi
+
+# startupProbe : laisse jusqu'à 60 s à torch pour s'importer avant d'activer les autres sondes.
+startupProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 2
+  failureThreshold: 30
+
+# livenessProbe : en échec => le conteneur est redémarré.
+livenessProbe:
+  httpGet:
+    path: /health
+    port: http
+  periodSeconds: 10
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+# readinessProbe : en échec => le Pod est retiré du Service (plus de trafic), sans redémarrage.
+readinessProbe:
+  httpGet:
+    path: /ready
+    port: http
+  periodSeconds: 5
+  timeoutSeconds: 2
+  failureThreshold: 3
+
+# Déploiement progressif sans perte de capacité : un Pod en plus, jamais un Pod en moins.
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

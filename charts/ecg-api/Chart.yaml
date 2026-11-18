@@ -1,0 +1,12 @@
+apiVersion: v2
+name: ecg-api
+description: API de détection d'anomalies ECG (CNN-BiLSTM, MIT-BIH) instrumentée Prometheus
+type: application
+# Version du chart (le packaging Kubernetes) : à incrémenter quand les templates changent.
+version: 0.1.0
+# Version de l'application : sert de tag d'image par défaut si image.tag est vide.
+appVersion: "0.1.0"
+home: https://github.com/eya-lakhal/mlops-gitops-ecg
+sources:
+  - https://github.com/eya-lakhal/mlops-gitops-ecg
+keywords: [mlops, ecg, fastapi, prometheus]
