@@ -1,0 +1,25 @@
+# Hyperparamètres et chemins : tout ce qui change un résultat est ici, et loggé dans MLflow.
+data:
+  raw_dir: data/raw/mitdb
+  processed_dir: data/processed
+  # Patients de DS1 mis de côté pour la validation (early stopping)
+  val_records: ["101", "118", "215", "223"]
+
+model:
+  conv_channels: [32, 64]
+  lstm_hidden: 64
+  dropout: 0.3
+
+train:
+  epochs: 20
+  batch_size: 256
+  lr: 0.001
+  weight_decay: 0.0001
+  class_weight_power: 0.5
+  patience: 4
+  seed: 42
+
+mlflow:
+  tracking_uri: sqlite:///mlflow.db
+  experiment: ecg-cnn-bilstm
+  registered_model: ecg-cnn-bilstm

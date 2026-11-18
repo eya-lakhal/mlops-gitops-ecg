@@ -11,6 +11,8 @@ data/raw/
 data/processed/
 mlruns/
 mlartifacts/
+mlflow.db
+*.egg-info/
 *.h5
 *.keras
 *.pt
