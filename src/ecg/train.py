@@ -90,11 +90,31 @@ def promote_if_better(client: MlflowClient, name: str, version: str, score: floa
     return False
 
 
+def apply_overrides(params: dict, overrides: list[str]) -> dict:
+    """Applique des surcharges « section.cle=valeur » (ex. train.lr=0.0005) sans toucher au YAML."""
+    for item in overrides:
+        key, sep, raw = item.partition("=")
+        if not sep:
+            raise ValueError(f"Surcharge invalide '{item}' : format attendu section.cle=valeur")
+        *path, leaf = key.split(".")
+        node = params
+        for part in path:
+            node = node[part]
+        if leaf not in node:
+            raise KeyError(f"Paramètre inconnu : {key}")
+        node[leaf] = yaml.safe_load(raw)
+    return params
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Entraîne le CNN-BiLSTM et le suit dans MLflow")
     parser.add_argument("--params", default="params.yaml")
+    parser.add_argument("--set", dest="overrides", action="append", default=[],
+                        metavar="section.cle=valeur",
+                        help="surcharge un paramètre pour cette exécution (répétable)")
     args = parser.parse_args()
     params = yaml.safe_load(Path(args.params).read_text(encoding="utf-8"))
+    params = apply_overrides(params, args.overrides)
     d, t, m, ml = params["data"], params["train"], params["model"], params["mlflow"]
     set_seed(t["seed"])
 
