@@ -1,10 +1,9 @@
 import numpy as np
+import pytest
 import torch
 
 from ecg.constants import CLASSES, N_FEATURES
 from ecg.model import CnnBiLstm
-import pytest
-
 from ecg.train import apply_overrides, class_weights, flatten
 
 

@@ -16,6 +16,8 @@ mlflow.db
 *.h5
 *.keras
 *.pt
+# Exception : le modèle exporté (~350 Ko) est versionné, c'est lui que l'image embarque
+!models/*/model.pt
 *.onnx
 
 # Secrets

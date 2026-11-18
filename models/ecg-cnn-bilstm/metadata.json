@@ -1,0 +1,40 @@
+{
+  "model_name": "ecg-cnn-bilstm",
+  "version": "1",
+  "alias": "champion",
+  "run_id": "fe63930374b5465a8157158067425e55",
+  "git_commit": "dc32e7f",
+  "exported_at": "2026-11-18T21:25:55+00:00",
+  "classes": [
+    "N",
+    "S",
+    "V",
+    "F"
+  ],
+  "n_features": 260,
+  "architecture": {
+    "conv_channels": [
+      32,
+      64
+    ],
+    "lstm_hidden": 64,
+    "dropout": 0.3
+  },
+  "metrics": {
+    "test_F_f1": 0.0,
+    "test_F_precision": 0.0,
+    "test_F_recall": 0.0,
+    "test_N_f1": 0.9489,
+    "test_N_precision": 0.9424,
+    "test_N_recall": 0.9555,
+    "test_S_f1": 0.0,
+    "test_S_precision": 0.0,
+    "test_S_recall": 0.0,
+    "test_V_f1": 0.7591,
+    "test_V_precision": 0.6734,
+    "test_V_recall": 0.8698,
+    "test_accuracy": 0.9072,
+    "test_macro_f1": 0.427
+  },
+  "sha256": "298217c34d862b8caad248374bcc51ddbb7e9cbdcb5b521cb515ded0770cbfe3"
+}

@@ -14,7 +14,7 @@ import numpy as np
 import yaml
 from scipy.signal import butter, filtfilt
 
-from ecg.constants import AFTER, BEFORE, CLASSES, FS, N_FEATURES, N_RR, N_SAMPLES
+from ecg.constants import AFTER, BEFORE, CLASSES, FS, N_FEATURES, N_RR
 
 # Symboles d'annotation MIT-BIH -> classes AAMI
 _SYMBOL_TO_CLASS = {

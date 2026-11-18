@@ -1,0 +1,3 @@
+# Fins de ligne LF dans le dépôt (scripts et YAML exécutés sous Linux : conteneurs, CI, Kubernetes)
+* text=auto eol=lf
+*.pt binary
