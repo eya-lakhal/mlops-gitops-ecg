@@ -10,7 +10,7 @@ canary avec Argo Rollouts, suivi de dérive avec Evidently, infrastructure Terra
 ## Feuille de route
 
 - [x] 1. Entraînement du modèle suivi avec MLflow
-- [ ] 2. API de prédiction FastAPI + Prometheus, image Docker non-root
+- [x] 2. API de prédiction FastAPI + Prometheus, image Docker non-root
 - [ ] 3. CI/CD GitHub Actions (tests, helm lint, build, Trivy, GHCR, mise à jour GitOps du tag)
 - [ ] 4. Kubernetes local (kind) + Helm + ArgoCD
 - [ ] 5. Observabilité : kube-prometheus-stack, SLO 99 %, budget d'erreur, alertes Discord
@@ -50,6 +50,25 @@ python -m venv .venv
 Limite connue : la classe S (supraventriculaire) n'est pas reconnue chez des patients inconnus ; une version améliorée
 des features RR est prévue pour la Phase 7 (déploiement canary). Détails dans
 [docs/problemes-rencontres.md](docs/problemes-rencontres.md).
+
+## Phase 2 : API de prédiction conteneurisée
+
+- **Export découplé** : `ecg.export` copie le modèle `@champion` hors de MLflow (poids `state_dict` + `metadata.json`
+  avec version, run_id, métriques et SHA-256). Le dossier est versionné ; **une image = un modèle précis**.
+- **Chargement sûr** : `torch.load(weights_only=True)` (pas d'exécution de code arbitraire) et vérification du SHA-256 ;
+  l'API refuse de démarrer si les poids ont été modifiés.
+- **API FastAPI** : `POST /predict` (1 à 256 battements de 260 valeurs, validés par Pydantic), `/health` (liveness),
+  `/ready` (readiness), `/model`, `/metrics`.
+- **Prometheus** : signaux RED (`http_requests_total`, `http_request_duration_seconds`) étiquetés par gabarit de route,
+  avec une cardinalité bornée ; signaux métier (`ecg_predictions_total`, `ecg_prediction_confidence`, `ecg_model_info`).
+- **Docker** : multi-stage, torch CPU, utilisateur UID 10001 sans shell, modèle en lecture seule, HEALTHCHECK.
+
+```powershell
+.venv\Scripts\python -m ecg.export                    # MLflow @champion -> models/ecg-cnn-bilstm
+docker build -t ecg-api:0.1.0 .
+docker run -d --name ecg-api -p 8000:8000 ecg-api:0.1.0
+Invoke-RestMethod -Method Post -Uri http://localhost:8000/predict -ContentType "application/json" -InFile samples\beats.json
+```
 
 ## Prérequis
 

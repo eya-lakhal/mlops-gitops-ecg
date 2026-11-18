@@ -1,0 +1,8 @@
+# Contexte de build minimal : seuls pyproject.toml, src/ et models/ sont nécessaires.
+*
+!pyproject.toml
+!src/
+!models/
+**/__pycache__
+**/*.pyc
+src/*.egg-info

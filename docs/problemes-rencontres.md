@@ -39,3 +39,15 @@ du README final. Format : symptôme → cause → solution → leçon.
 ### Avertissement MLflow : `torch==2.15.0` au lieu de `2.15.0+cpu`
 - **Cause** : MLflow retire le suffixe local `+cpu` pour que le `requirements.txt` du modèle soit installable depuis PyPI ; or PyPI sert la version CUDA de torch sur Linux, soit plusieurs Go.
 - **À retenir pour la Phase 2** : dans l'image Docker, installer torch depuis l'index CPU de PyTorch au lieu des requirements générés par MLflow.
+
+## Phase 2 : API et Docker
+
+### `/docs` comptabilisé comme route `unmatched` dans Prometheus
+- **Symptôme** : `http_requests_total{route="unmatched",status="200"}` alors qu'aucune requête n'avait échoué.
+- **Cause** : seules les routes déclarées avec `@app.get/post` portent un gabarit (`scope["route"]`) ; `/docs` et `/openapi.json` sont des routes internes de FastAPI sans gabarit.
+- **Solution** : utiliser le chemin réel pour ces routes, mais regrouper toutes les 404 sous `unmatched`. Sinon, un scan d'URL créerait une série temporelle par chemin inventé et ferait exploser la mémoire de Prometheus (explosion de cardinalité).
+
+### Image de 1,58 Go
+- **Cause** : PyTorch, même en version CPU, pèse environ 1 Go une fois installé ; le reste vient de Python et de FastAPI.
+- **Déjà évité** : la version CUDA de torch, qui aurait donné plusieurs Go.
+- **Piste** : exporter le modèle en ONNX et servir avec `onnxruntime` (~50 Mo) ramènerait l'image vers 300 Mo, avec un démarrage plus rapide et une surface d'attaque réduite (moins de CVE pour Trivy).
