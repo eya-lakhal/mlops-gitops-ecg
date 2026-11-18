@@ -20,7 +20,11 @@ RUN pip install "torch==${TORCH_VERSION}" --index-url https://download.pytorch.o
 WORKDIR /build
 COPY pyproject.toml ./
 COPY src ./src
-RUN pip install ".[api]"
+RUN pip install ".[api]" \
+ # setuptools (dépendance de torch) embarque ses propres copies de wheel/jaraco : la version
+ # récente corrige leurs CVE. pip n'est plus utile une fois l'environnement construit.
+ && pip install --upgrade setuptools \
+ && python -m pip uninstall -y pip
 
 # ---- Étape 2 : image finale minimale -----------------------------------------------------
 FROM python:${PYTHON_VERSION}-slim AS runtime
@@ -35,9 +39,15 @@ ENV PATH=/opt/venv/bin:$PATH \
     MODEL_DIR=/app/models/ecg-cnn-bilstm \
     TORCH_NUM_THREADS=1
 
+# Correctifs de sécurité Debian publiés depuis la construction de l'image de base, puis
+# suppression des outils d'installation Python du système (inutiles à l'exécution).
 # Utilisateur dédié sans shell ni home, avec un UID numérique fixe : Kubernetes peut ainsi
 # vérifier « runAsNonRoot » sans lire /etc/passwd.
-RUN groupadd --system --gid 10001 app \
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && rm -rf /var/lib/apt/lists/* \
+ && python -m pip uninstall -y pip setuptools wheel \
+ && groupadd --system --gid 10001 app \
  && useradd --system --uid 10001 --gid app --no-create-home --shell /usr/sbin/nologin app
 
 WORKDIR /app

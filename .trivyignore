@@ -1,0 +1,2 @@
+# Vulnérabilités acceptées explicitement (une par ligne : identifiant CVE + justification).
+# Règle : chaque exception doit être justifiée, datée et revue ; le fichier vide est l'état normal.

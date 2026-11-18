@@ -51,3 +51,14 @@ du README final. Format : symptôme → cause → solution → leçon.
 - **Cause** : PyTorch, même en version CPU, pèse environ 1 Go une fois installé ; le reste vient de Python et de FastAPI.
 - **Déjà évité** : la version CUDA de torch, qui aurait donné plusieurs Go.
 - **Piste** : exporter le modèle en ONNX et servir avec `onnxruntime` (~50 Mo) ramènerait l'image vers 300 Mo, avec un démarrage plus rapide et une surface d'attaque réduite (moins de CVE pour Trivy).
+
+## Phase 3 : CI/CD
+
+### Trivy bloque l'image : 5 vulnérabilités HIGH corrigeables
+- **Détection** : scan local avant le premier push (`trivy image --severity CRITICAL,HIGH --ignore-unfixed`), soit le même seuil que la barrière de la CI.
+- **Résultats** :
+  - `zlib1g` (CVE-2026-85091, paquet Debian) : l'image `python:3.11-slim` est antérieure au correctif publié par Debian.
+  - `wheel` (CVE-2026-24049) et `jaraco.context` (CVE-2026-23949) : **copies embarquées** dans `setuptools/_vendor`, présentes deux fois (Python système et venv). Invisibles dans `pip list`, mais détectées par Trivy.
+- **Corrections** (Dockerfile) : `apt-get upgrade` dans l'image finale ; mise à jour de `setuptools` dans le venv (requis par torch) ; suppression de `pip`, `setuptools` et `wheel` du Python système et de `pip` du venv, puisqu'ils ne servent pas à l'exécution.
+- **Résultat** : 0 HIGH/CRITICAL corrigeable ; l'image fonctionne aussi avec `--read-only --tmpfs /tmp`, comme dans Kubernetes.
+- **Leçons** : (1) une image de base « à jour » ne l'est jamais longtemps : il faut scanner à chaque build et reconstruire régulièrement ; (2) `--ignore-unfixed` évite de bloquer sur des CVE sans correctif disponible, ce qui garde la barrière actionnable ; (3) moins de paquets = moins de surface d'attaque.
