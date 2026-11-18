@@ -11,7 +11,7 @@ canary avec Argo Rollouts, suivi de dérive avec Evidently, infrastructure Terra
 
 - [x] 1. Entraînement du modèle suivi avec MLflow
 - [x] 2. API de prédiction FastAPI + Prometheus, image Docker non-root
-- [ ] 3. CI/CD GitHub Actions (tests, helm lint, build, Trivy, GHCR, mise à jour GitOps du tag)
+- [x] 3. CI/CD GitHub Actions (tests, helm lint, build, Trivy, GHCR, mise à jour GitOps du tag)
 - [ ] 4. Kubernetes local (kind) + Helm + ArgoCD
 - [ ] 5. Observabilité : kube-prometheus-stack, SLO 99 %, budget d'erreur, alertes Discord
 - [ ] 6. Autoscaling HPA + test de charge k6
@@ -69,6 +69,28 @@ docker build -t ecg-api:0.1.0 .
 docker run -d --name ecg-api -p 8000:8000 ecg-api:0.1.0
 Invoke-RestMethod -Method Post -Uri http://localhost:8000/predict -ContentType "application/json" -InFile samples\beats.json
 ```
+
+## Phase 3 : CI/CD et GitOps
+
+[![CI/CD](https://github.com/eya-lakhal/mlops-gitops-ecg/actions/workflows/ci.yml/badge.svg)](https://github.com/eya-lakhal/mlops-gitops-ecg/actions/workflows/ci.yml)
+
+```
+ test (ruff + pytest) ─┐
+                       ├─► build ─► scan Trivy ─► push GHCR ─► gitops : commit du tag dans deploy/envs/dev
+ helm lint ────────────┘            (barrière)    sha-xxxxxxx           (ArgoCD synchronise le cluster)
+```
+
+- **Barrières successives** : une image n'est poussée que si les tests, le lint du chart et le scan Trivy
+  (CRITICAL/HIGH corrigeables) passent. Le rapport complet est publié dans l'onglet *Security*.
+- **Tags immuables** `sha-<commit>` : chaque déploiement est traçable jusqu'au commit, et un retour arrière
+  se fait par `git revert`.
+- **GitOps (pull)** : la CI n'a aucun accès au cluster ; elle modifie seulement l'état voulu dans Git.
+- **Chaîne d'approvisionnement** : actions épinglées par SHA de commit, permissions minimales par job,
+  Dependabot pour les actions, l'image de base et les paquets Python.
+- **Chart Helm durci** : `runAsNonRoot`, `readOnlyRootFilesystem`, `capabilities: drop ALL`, seccomp `RuntimeDefault`,
+  aucun jeton de ServiceAccount monté, sondes startup/liveness/readiness, rolling update `maxUnavailable: 0`.
+
+Premier run : tests 1 min, build + scan + push 3 min ; image `ghcr.io/eya-lakhal/ecg-api:sha-5f8f92c`.
 
 ## Prérequis
 
