@@ -1,0 +1,65 @@
+# Validation de l'infrastructure as code (sans accès à Azure : aucun secret nécessaire).
+name: Infra (Terraform)
+
+on:
+  push:
+    branches: [main]
+    paths: ["infra/terraform/**", ".github/workflows/infra.yml"]
+  pull_request:
+    paths: ["infra/terraform/**", ".github/workflows/infra.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  terraform:
+    name: fmt, validate et scan de configuration
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      security-events: write
+    defaults:
+      run:
+        working-directory: infra/terraform/azure
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: "1.17.1"
+
+      - name: Format
+        run: terraform fmt -check -recursive -diff
+
+      - name: Init (sans backend) et validate
+        run: |
+          terraform init -backend=false -input=false
+          terraform validate
+
+      - name: Scan des mauvaises configurations (Trivy)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra/terraform
+          format: sarif
+          output: trivy-iac.sarif
+          exit-code: "0"
+
+      - name: Publier le rapport dans GitHub Security
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+        with:
+          sarif_file: trivy-iac.sarif
+          category: trivy-iac
+
+      - name: Barrière (CRITICAL = échec)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: infra/terraform
+          severity: CRITICAL
+          exit-code: "1"
+          skip-setup-trivy: true
