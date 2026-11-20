@@ -21,4 +21,4 @@ slo:
 dashboard:
   enabled: true
 # Chaos engineering : mettre "0.3" pour simuler 30 % d'erreurs, puis revenir à "0".
-faultRate: "0.3"
+faultRate: "0"
