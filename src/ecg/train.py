@@ -31,7 +31,7 @@ from sklearn.metrics import ConfusionMatrixDisplay, classification_report, f1_sc
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from ecg.constants import CLASSES
+from ecg.constants import CLASSES, N_SAMPLES
 from ecg.data import describe, load_or_prepare
 from ecg.model import CnnBiLstm
 
@@ -49,6 +49,25 @@ def class_weights(y: np.ndarray, n_classes: int, power: float) -> torch.Tensor:
     counts = np.maximum(np.bincount(y, minlength=n_classes), 1).astype(np.float64)
     weights = (counts.sum() / (n_classes * counts)) ** power
     return torch.tensor(weights / weights.mean(), dtype=torch.float32)
+
+
+def augment(xb: torch.Tensor, rng: torch.Generator) -> torch.Tensor:
+    """Augmentation de la partie « signal » d'un lot (les features RR restent intactes).
+
+    Simule la variabilité entre patients et appareils : gain d'amplitude, bruit de mesure,
+    dérive de ligne de base et léger décalage temporel du pic R. Objectif : moins
+    d'apprentissage « par cœur » de la morphologie des patients d'entraînement.
+    """
+    n = xb.shape[0]
+    sig, rr = xb[:, :N_SAMPLES], xb[:, N_SAMPLES:]
+    gain = torch.empty(n, 1).uniform_(0.8, 1.2, generator=rng)
+    noise = torch.randn(n, N_SAMPLES, generator=rng) * 0.05
+    t = torch.linspace(0, 1, N_SAMPLES)
+    phase = torch.rand(n, 1, generator=rng) * 6.28
+    wander = 0.1 * torch.rand(n, 1, generator=rng) * torch.sin(2 * torch.pi * 0.5 * t + phase)
+    shift = int(torch.randint(-5, 6, (1,), generator=rng))
+    sig = torch.roll(sig * gain + noise + wander, shifts=shift, dims=1)
+    return torch.cat([sig, rr], dim=1)
 
 
 @torch.no_grad()
@@ -150,10 +169,13 @@ def main() -> None:
                             batch_size=t["batch_size"], shuffle=True)
 
         best_f1, best_state, bad_epochs = -1.0, None, 0
+        rng = torch.Generator().manual_seed(t["seed"])
         for epoch in range(t["epochs"]):
             model.train()
             total = 0.0
             for xb, yb in loader:
+                if t.get("augment", False):
+                    xb = augment(xb, rng)
                 optimizer.zero_grad()
                 loss = loss_fn(model(xb), yb)
                 loss.backward()

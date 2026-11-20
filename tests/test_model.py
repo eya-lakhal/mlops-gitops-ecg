@@ -2,9 +2,17 @@ import numpy as np
 import pytest
 import torch
 
-from ecg.constants import CLASSES, N_FEATURES
+from ecg.constants import CLASSES, N_FEATURES, N_SAMPLES
 from ecg.model import CnnBiLstm
-from ecg.train import apply_overrides, class_weights, flatten
+from ecg.train import apply_overrides, augment, class_weights, flatten
+
+
+def test_augment_changes_signal_but_keeps_rr_features():
+    x = torch.randn(4, N_FEATURES)
+    out = augment(x.clone(), torch.Generator().manual_seed(0))
+    assert out.shape == x.shape
+    assert not torch.allclose(out[:, :N_SAMPLES], x[:, :N_SAMPLES])
+    assert torch.equal(out[:, N_SAMPLES:], x[:, N_SAMPLES:])
 
 
 def test_forward_output_shape():

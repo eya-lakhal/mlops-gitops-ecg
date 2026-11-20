@@ -18,6 +18,8 @@ train:
   class_weight_power: 0.5
   patience: 4
   seed: 42
+  # Augmentation du signal (gain, bruit, dérive de ligne de base, décalage) : voir train.augment
+  augment: false
 
 mlflow:
   tracking_uri: sqlite:///mlflow.db
