@@ -32,6 +32,10 @@ kubectl -n monitoring port-forward svc/kps-grafana 3000:80          # dashboard 
 **Sévérité** : warning. **Signification** : le taux d'erreur dépasse durablement le rythme soutenable (3 fois sur 1 jour, ou
 1 fois sur 3 jours). Pas d'urgence immédiate, mais le SLO sera manqué si rien ne change.
 
+> **Attention** : cette alerte peut se déclencher **après** la résolution d'un incident rapide (sa fenêtre courte est
+> de 2 h et contient encore les erreurs passées). Si le panneau « Taux d'erreur 5xx » est revenu à 0 et que l'alerte
+> rapide est résolue, elle retombera d'elle-même : pas d'action requise.
+
 1. Sur le dashboard, identifier le début de la hausse dans le panneau « Taux d'erreur 5xx vs seuil du SLO ».
 2. La corréler avec les déploiements (même démarche que ci-dessus) et la charge (panneau « Trafic »).
 3. Ouvrir un ticket ; si le budget restant passe sous 25 %, **geler les déploiements non correctifs** (politique de budget d'erreur).

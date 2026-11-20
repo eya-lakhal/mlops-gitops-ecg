@@ -71,3 +71,16 @@ du README final. Format : symptôme → cause → solution → leçon.
 - **Diagnostic** : `helm list -A` (STATUS `failed`) et `helm history argocd -n argocd` (message du hook) ; `crictl images` sur le nœud kind a montré que l'image avait fini par arriver.
 - **Solution** : `helm uninstall`, puis réinstallation avec `--timeout 15m`.
 - **Leçons** : (1) une erreur en aval (`resource type "applications"` inconnu) cache souvent la vraie cause en amont : il faut remonter la chaîne ; (2) les hooks Helm s'exécutent avant les ressources : s'ils échouent, rien n'est créé ; (3) sur un réseau lent, on peut pré-charger les images dans kind (`kind load docker-image`).
+
+## Phase 5 : observabilité
+
+### `git push` refusé (non fast-forward) juste après un commit d'infrastructure
+- **Cause** : le commit `feat(monitoring)` modifiait uniquement `infra/` et `deploy/`, mais le filtre `paths-ignore` excluant ces dossiers n'arrivait que dans le commit suivant. La CI a donc tourné, reconstruit l'image et le bot a poussé son commit GitOps pendant que je préparais le suivant.
+- **Solution** : `git pull --rebase`, sans conflit, car le bot modifie seulement la ligne `image.tag`.
+- **Leçons** : (1) en GitOps, un bot écrit dans la branche principale : toujours faire un `pull --rebase` avant de pousser ; (2) un changement de configuration ne doit pas reconstruire l'image : `paths-ignore` sur `deploy/**` et `infra/**`.
+
+### Choix d'installation de kube-prometheus-stack dans kind
+- Composants du plan de contrôle (`kube-scheduler`, `kube-controller-manager`, `etcd`, `kube-proxy`) **désactivés** : non joignables dans kind, ils déclencheraient des alertes `TargetDown` permanentes (fatigue d'alerte).
+- **Webhook d'admission** de Prometheus Operator désactivé (ses Jobs de certificats se synchronisent mal avec ArgoCD) ; compensé par `promtool check rules` dans la CI.
+- **Mot de passe Grafana** dans un Secret créé hors Git : un mot de passe aléatoire généré par le chart changerait à chaque rendu ArgoCD (désynchronisation permanente).
+- **CRD trop volumineuses** pour `kubectl apply` côté client (limite de 256 Ko sur l'annotation `last-applied-configuration`) : `ServerSideApply=true` dans l'Application ArgoCD.
