@@ -20,5 +20,10 @@ slo:
   enabled: true
 dashboard:
   enabled: true
+# Autoscaling (Phase 6) : de 2 à 5 Pods selon le CPU (le champ replicaCount est alors ignoré).
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
 # Chaos engineering : mettre "0.3" pour simuler 30 % d'erreurs, puis revenir à "0".
 faultRate: "0"

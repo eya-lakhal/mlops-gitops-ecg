@@ -108,6 +108,32 @@ dashboard:
   # ConfigMap détectée par le sidecar Grafana (label grafana_dashboard=1).
   enabled: false
 
+# --- Autoscaling (Phase 6, nécessite metrics-server) ----------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 4
+  # Pourcentage des requests CPU (250m par défaut) au-delà duquel on ajoute des Pods.
+  targetCPUUtilizationPercentage: 60
+  scaleDownStabilizationSeconds: 120
+
+# --- Déploiement progressif (Phase 7, nécessite Argo Rollouts) ------------------------------
+rollout:
+  enabled: false
+  # Paliers de la progression canary (une pause sans durée attendrait une promotion manuelle).
+  steps:
+    - setWeight: 25
+    - pause: { duration: 2m }
+    - setWeight: 50
+    - pause: { duration: 2m }
+    - setWeight: 75
+    - pause: { duration: 1m }
+  analysis:
+    prometheusAddress: http://kps-kube-prometheus-stack-prometheus.monitoring.svc:9090
+    initialDelay: 1m
+    interval: 30s
+    minConfidence: 0.6
+
 # Chaos engineering : fraction des requêtes /predict qui renvoient volontairement 500.
 faultRate: "0"
 

@@ -11,11 +11,15 @@ spec:
   sourceRepos:
     - https://github.com/eya-lakhal/mlops-gitops-ecg.git
     - ghcr.io/prometheus-community/charts
+    - https://kubernetes-sigs.github.io/metrics-server/
+    - ghcr.io/argoproj/argo-helm
   destinations:
     - server: https://kubernetes.default.svc
       namespace: monitoring
     - server: https://kubernetes.default.svc
       namespace: kube-system
+    - server: https://kubernetes.default.svc
+      namespace: argo-rollouts
   clusterResourceWhitelist:
     - group: "*"
       kind: "*"

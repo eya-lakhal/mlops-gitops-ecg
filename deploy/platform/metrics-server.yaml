@@ -1,0 +1,31 @@
+# metrics-server : fournit l'API metrics.k8s.io (CPU/mémoire des Pods) dont le HPA a besoin.
+# Absent par défaut dans kind.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: metrics-server
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: platform
+  source:
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    chart: metrics-server
+    targetRevision: 3.14.0
+    helm:
+      releaseName: metrics-server
+      valuesObject:
+        # Les kubelets de kind utilisent des certificats auto-signés : à ne pas faire en production.
+        args:
+          - --kubelet-insecure-tls
+        resources:
+          requests: { cpu: 20m, memory: 48Mi }
+          limits: { memory: 128Mi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kube-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

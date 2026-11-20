@@ -1,0 +1,43 @@
+{{- if .Values.autoscaling.enabled }}
+# Autoscaling horizontal sur l'utilisation CPU, mesurée par rapport aux requests du conteneur.
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "ecg-api.fullname" . }}
+  labels:
+    {{- include "ecg-api.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef:
+    {{- if .Values.rollout.enabled }}
+    apiVersion: argoproj.io/v1alpha1
+    kind: Rollout
+    {{- else }}
+    apiVersion: apps/v1
+    kind: Deployment
+    {{- end }}
+    name: {{ include "ecg-api.fullname" . }}
+  minReplicas: {{ .Values.autoscaling.minReplicas }}
+  maxReplicas: {{ .Values.autoscaling.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: {{ .Values.autoscaling.targetCPUUtilizationPercentage }}
+  behavior:
+    scaleUp:
+      # Monter vite : jusqu'à doubler toutes les 30 s.
+      stabilizationWindowSeconds: 0
+      policies:
+        - type: Percent
+          value: 100
+          periodSeconds: 30
+    scaleDown:
+      # Descendre prudemment : éviter le « yo-yo » quand la charge oscille.
+      stabilizationWindowSeconds: {{ .Values.autoscaling.scaleDownStabilizationSeconds }}
+      policies:
+        - type: Pods
+          value: 1
+          periodSeconds: 60
+{{- end }}

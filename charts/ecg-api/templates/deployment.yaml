@@ -1,3 +1,4 @@
+{{- if not .Values.rollout.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,7 +6,11 @@ metadata:
   labels:
     {{- include "ecg-api.labels" . | nindent 4 }}
 spec:
+  {{- if not .Values.autoscaling.enabled }}
+  # Avec un HPA, le nombre de réplicas n'est PAS déclaré ici : sinon ArgoCD (selfHeal) et le
+  # HPA se battraient en remettant chacun leur valeur.
   replicas: {{ .Values.replicaCount }}
+  {{- end }}
   revisionHistoryLimit: 5
   strategy:
     {{- toYaml .Values.strategy | nindent 4 }}
@@ -13,67 +18,5 @@ spec:
     matchLabels:
       {{- include "ecg-api.selectorLabels" . | nindent 6 }}
   template:
-    metadata:
-      {{- with .Values.podAnnotations }}
-      annotations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      labels:
-        {{- include "ecg-api.labels" . | nindent 8 }}
-        {{- with .Values.podLabels }}
-        {{- toYaml . | nindent 8 }}
-        {{- end }}
-    spec:
-      {{- with .Values.imagePullSecrets }}
-      imagePullSecrets:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      serviceAccountName: {{ include "ecg-api.serviceAccountName" . }}
-      automountServiceAccountToken: {{ .Values.serviceAccount.automount }}
-      securityContext:
-        {{- toYaml .Values.podSecurityContext | nindent 8 }}
-      containers:
-        - name: api
-          image: "{{ .Values.image.repository }}:{{ include "ecg-api.imageTag" . }}"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          securityContext:
-            {{- toYaml .Values.securityContext | nindent 12 }}
-          ports:
-            - name: http
-              containerPort: {{ .Values.containerPort }}
-              protocol: TCP
-          env:
-            {{- range $key, $value := .Values.env }}
-            - name: {{ $key }}
-              value: {{ $value | quote }}
-            {{- end }}
-            - name: FAULT_RATE
-              value: {{ .Values.faultRate | quote }}
-          startupProbe:
-            {{- toYaml .Values.startupProbe | nindent 12 }}
-          livenessProbe:
-            {{- toYaml .Values.livenessProbe | nindent 12 }}
-          readinessProbe:
-            {{- toYaml .Values.readinessProbe | nindent 12 }}
-          resources:
-            {{- toYaml .Values.resources | nindent 12 }}
-          volumeMounts:
-            # Racine en lecture seule : /tmp reste inscriptible pour Python et torch.
-            - name: tmp
-              mountPath: /tmp
-      volumes:
-        - name: tmp
-          emptyDir:
-            sizeLimit: 64Mi
-      {{- with .Values.nodeSelector }}
-      nodeSelector:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.affinity }}
-      affinity:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with .Values.tolerations }}
-      tolerations:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+    {{- include "ecg-api.podTemplate" . | nindent 4 }}
+{{- end }}

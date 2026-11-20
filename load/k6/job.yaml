@@ -1,0 +1,53 @@
+# Job k6 : exécute load/k6/predict.js dans le cluster (outil de test, hors GitOps).
+# Créer d'abord la ConfigMap contenant le script et les données :
+#   kubectl -n ecg-dev create configmap k6-predict --from-file=load/k6/predict.js --from-file=samples/beats.json
+#   kubectl -n ecg-dev apply -f load/k6/job.yaml
+#   kubectl -n ecg-dev logs -f job/k6-predict
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-predict
+  labels:
+    app.kubernetes.io/name: k6
+    app.kubernetes.io/part-of: mlops-gitops-ecg
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k6
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12345
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: k6
+          image: grafana/k6:2.4.0
+          args: ["run", "--summary-export=/tmp/summary.json", "/scripts/predict.js"]
+          workingDir: /scripts
+          env:
+            - name: BASE_URL
+              value: http://ecg-api.ecg-dev.svc
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 200m, memory: 128Mi }
+            limits: { cpu: "1", memory: 512Mi }
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: k6-predict
+        - name: tmp
+          emptyDir: {}
