@@ -1,0 +1,121 @@
+# kube-prometheus-stack 93.6.0 (Prometheus Operator v0.95.2) pour le cluster kind local.
+# Déployé par ArgoCD : deploy/platform/monitoring.yaml.
+
+# Composants du plan de contrôle non joignables dans kind : les désactiver évite des alertes
+# « TargetDown » permanentes qui noieraient les vraies alertes.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+prometheusOperator:
+  # Webhook de validation désactivé : il repose sur des Jobs de certificats (hooks Helm) qui se
+  # synchronisent mal avec ArgoCD. Contrepartie : une PrometheusRule invalide n'est pas rejetée
+  # à l'admission ; la CI la valide avec promtool à la place.
+  admissionWebhooks:
+    enabled: false
+    patch:
+      enabled: false
+  tls:
+    enabled: false
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+
+prometheus:
+  prometheusSpec:
+    # Sélectionner TOUS les ServiceMonitor et PrometheusRule du cluster, pas seulement ceux qui
+    # portent le label « release » de ce chart : les applications déclarent leur propre supervision.
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    retention: 7d
+    retentionSize: 4GB
+    scrapeInterval: 30s
+    evaluationInterval: 30s
+    resources:
+      requests: { cpu: 100m, memory: 512Mi }
+      limits: { memory: 1536Mi }
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 5Gi
+
+alertmanager:
+  alertmanagerSpec:
+    # Secret créé hors Git (kubectl create secret) : l'URL du webhook Discord est un identifiant.
+    # Monté dans /etc/alertmanager/secrets/alertmanager-discord/.
+    secrets:
+      - alertmanager-discord
+    resources:
+      requests: { cpu: 10m, memory: 32Mi }
+      limits: { memory: 128Mi }
+  config:
+    global:
+      resolve_timeout: 5m
+    route:
+      # Par défaut, rien n'est envoyé : seules les alertes de l'équipe « ecg » partent sur Discord.
+      receiver: "null"
+      group_by: ["alertname", "namespace"]
+      group_wait: 30s
+      group_interval: 5m
+      repeat_interval: 4h
+      routes:
+        - receiver: discord
+          matchers:
+            - team = "ecg"
+        - receiver: "null"
+          matchers:
+            - alertname =~ "Watchdog|InfoInhibitor"
+    inhibit_rules:
+      # Si l'API est complètement tombée, inutile d'envoyer aussi les alertes de burn rate.
+      - source_matchers: [alertname = "EcgApiDown"]
+        target_matchers: [alertname =~ "EcgApiErrorBudgetBurn.*|EcgApiHighLatency"]
+        equal: ["namespace"]
+    receivers:
+      - name: "null"
+      - name: discord
+        discord_configs:
+          - webhook_url_file: /etc/alertmanager/secrets/alertmanager-discord/webhook-url
+            send_resolved: true
+            title: '{{ if eq .Status "firing" }}🔥{{ else }}✅{{ end }} [{{ .Status | toUpper }}] {{ .CommonLabels.alertname }}'
+            message: |-
+              {{ range .Alerts }}**{{ .Labels.severity | toUpper }}** · {{ .Annotations.summary }}
+              {{ .Annotations.description }}
+              📖 Runbook : {{ .Annotations.runbook_url }}
+              {{ end }}
+
+grafana:
+  # Identifiants admin lus dans un Secret créé hors Git. Un mot de passe aléatoire généré par le
+  # chart changerait à chaque rendu ArgoCD (désynchronisation permanente).
+  admin:
+    existingSecret: grafana-admin
+    userKey: admin-user
+    passwordKey: admin-password
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      labelValue: "1"
+      # Les dashboards sont livrés avec chaque application, dans son propre namespace.
+      searchNamespace: ALL
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 384Mi }
+
+kube-state-metrics:
+  resources:
+    requests: { cpu: 10m, memory: 32Mi }
+    limits: { memory: 128Mi }
+
+prometheus-node-exporter:
+  resources:
+    requests: { cpu: 10m, memory: 16Mi }
+    limits: { memory: 64Mi }

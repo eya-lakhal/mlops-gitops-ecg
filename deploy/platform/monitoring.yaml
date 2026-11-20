@@ -1,0 +1,41 @@
+# kube-prometheus-stack déployé par ArgoCD, avec deux sources :
+#  1. le chart, depuis le registre OCI de prometheus-community ;
+#  2. ce dépôt, référencé sous le nom $values, pour lire infra/monitoring/values.yaml.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: monitoring
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: platform
+  sources:
+    - repoURL: ghcr.io/prometheus-community/charts
+      chart: kube-prometheus-stack
+      targetRevision: 93.6.0
+      helm:
+        releaseName: kps
+        valueFiles:
+          - $values/infra/monitoring/values.yaml
+    - repoURL: https://github.com/eya-lakhal/mlops-gitops-ecg.git
+      targetRevision: main
+      ref: values
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: monitoring
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      # Les CRD de Prometheus Operator dépassent la taille maximale de l'annotation
+      # « last-applied-configuration » : l'application côté serveur évite cette limite.
+      - ServerSideApply=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 20s
+        factor: 2
+        maxDuration: 5m

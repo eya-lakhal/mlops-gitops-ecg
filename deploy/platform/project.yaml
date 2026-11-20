@@ -1,0 +1,21 @@
+# AppProject « platform » : composants d'infrastructure partagés (supervision, puis Argo Rollouts).
+# Contrairement au projet « ecg », il doit créer des ressources à l'échelle du cluster
+# (CRD, ClusterRole, webhooks) : ce droit est réservé à ce projet.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: platform
+  namespace: argocd
+spec:
+  description: Composants de plateforme (observabilité, déploiement progressif)
+  sourceRepos:
+    - https://github.com/eya-lakhal/mlops-gitops-ecg.git
+    - ghcr.io/prometheus-community/charts
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: monitoring
+    - server: https://kubernetes.default.svc
+      namespace: kube-system
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"

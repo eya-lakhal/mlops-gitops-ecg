@@ -1,0 +1,14 @@
+# Déclaration du registre OCI public des charts prometheus-community auprès d'ArgoCD.
+# Aucun identifiant : le registre est public. ArgoCD reconnaît ce Secret à son label.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-prometheus-community-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: prometheus-community
+  type: helm
+  url: ghcr.io/prometheus-community/charts
+  enableOCI: "true"
