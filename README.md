@@ -12,7 +12,7 @@ canary avec Argo Rollouts, suivi de dérive avec Evidently, infrastructure Terra
 - [x] 1. Entraînement du modèle suivi avec MLflow
 - [x] 2. API de prédiction FastAPI + Prometheus, image Docker non-root
 - [x] 3. CI/CD GitHub Actions (tests, helm lint, build, Trivy, GHCR, mise à jour GitOps du tag)
-- [ ] 4. Kubernetes local (kind) + Helm + ArgoCD
+- [x] 4. Kubernetes local (kind) + Helm + ArgoCD
 - [ ] 5. Observabilité : kube-prometheus-stack, SLO 99 %, budget d'erreur, alertes Discord
 - [ ] 6. Autoscaling HPA + test de charge k6
 - [ ] 7. Déploiement canary d'une nouvelle version du modèle (Argo Rollouts)
@@ -91,6 +91,26 @@ Invoke-RestMethod -Method Post -Uri http://localhost:8000/predict -ContentType "
   aucun jeton de ServiceAccount monté, sondes startup/liveness/readiness, rolling update `maxUnavailable: 0`.
 
 Premier run : tests 1 min, build + scan + push 3 min ; image `ghcr.io/eya-lakhal/ecg-api:sha-5f8f92c`.
+
+## Phase 4 : Kubernetes local et ArgoCD
+
+- **Cluster kind `mlops`** : 1 control-plane et 1 worker, chacun étant un conteneur Docker.
+- **ArgoCD v3.6.1** installé par Helm (chart OCI `argo-cd` 10.18.1), allégé pour le local, synchronisation toutes les 60 s.
+- **AppProject `ecg`** : sources limitées à ce dépôt, destinations limitées aux namespaces `ecg-*`.
+- **Application `ecg-api-dev`** : chart `charts/ecg-api` + `deploy/envs/dev/values.yaml` → namespace `ecg-dev`,
+  avec `automated` (`prune` + `selfHeal`) et `CreateNamespace`.
+
+```powershell
+kind create cluster --config infra/kind/cluster.yaml
+helm upgrade --install argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.18.1 `
+  -n argocd --create-namespace -f infra/argocd/values.yaml --wait --timeout 15m
+kubectl apply -f deploy/argocd/                        # bootstrap : seule application manuelle
+kubectl -n argocd port-forward svc/argocd-server 8080:80   # interface : http://localhost:8080
+argocd admin initial-password -n argocd
+```
+
+Boucle complète : `git push` → CI (tests, build, Trivy, GHCR) → le bot écrit `sha-xxxxxxx` dans
+`deploy/envs/dev/values.yaml` → ArgoCD détecte le commit et applique un rolling update, sans aucun accès de la CI au cluster.
 
 ## Prérequis
 

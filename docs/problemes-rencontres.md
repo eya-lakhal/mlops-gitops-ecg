@@ -62,3 +62,12 @@ du README final. Format : symptôme → cause → solution → leçon.
 - **Corrections** (Dockerfile) : `apt-get upgrade` dans l'image finale ; mise à jour de `setuptools` dans le venv (requis par torch) ; suppression de `pip`, `setuptools` et `wheel` du Python système et de `pip` du venv, puisqu'ils ne servent pas à l'exécution.
 - **Résultat** : 0 HIGH/CRITICAL corrigeable ; l'image fonctionne aussi avec `--read-only --tmpfs /tmp`, comme dans Kubernetes.
 - **Leçons** : (1) une image de base « à jour » ne l'est jamais longtemps : il faut scanner à chaque build et reconstruire régulièrement ; (2) `--ignore-unfixed` évite de bloquer sur des CVE sans correctif disponible, ce qui garde la barrière actionnable ; (3) moins de paquets = moins de surface d'attaque.
+
+## Phase 4 : kind et ArgoCD
+
+### `helm install argocd` échoue : `failed pre-install: Job argocd-redis-secret-init not ready`
+- **Symptôme** : la release Helm est en état `failed`, il n'y a aucun Pod dans `argocd`, et `kubectl apply` de l'Application échoue (`the server doesn't have a resource type "applications"`), donc `ecg-dev` reste vide.
+- **Cause** : le chart lance un *hook* `pre-install` (un Job qui génère le secret Redis) avant de créer le reste. Ce Job utilise l'image `quay.io/argoproj/argocd` (229 Mo) ; avec une connexion lente, son téléchargement a dépassé le délai par défaut de `--wait` (5 min). Helm a abandonné avant d'installer les CRD.
+- **Diagnostic** : `helm list -A` (STATUS `failed`) et `helm history argocd -n argocd` (message du hook) ; `crictl images` sur le nœud kind a montré que l'image avait fini par arriver.
+- **Solution** : `helm uninstall`, puis réinstallation avec `--timeout 15m`.
+- **Leçons** : (1) une erreur en aval (`resource type "applications"` inconnu) cache souvent la vraie cause en amont : il faut remonter la chaîne ; (2) les hooks Helm s'exécutent avant les ressources : s'ils échouent, rien n'est créé ; (3) sur un réseau lent, on peut pré-charger les images dans kind (`kind load docker-image`).

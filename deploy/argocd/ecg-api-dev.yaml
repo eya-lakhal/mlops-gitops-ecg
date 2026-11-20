@@ -1,0 +1,36 @@
+# Application ArgoCD : « ce qui est dans Git (chart + valeurs dev) doit tourner dans ecg-dev ».
+# ArgoCD compare en continu l'état voulu (Git) et l'état réel (cluster), et corrige l'écart.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ecg-api-dev
+  namespace: argocd
+  # Supprime proprement les ressources déployées si l'Application est supprimée.
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: ecg
+  source:
+    repoURL: https://github.com/eya-lakhal/mlops-gitops-ecg.git
+    targetRevision: main
+    path: charts/ecg-api
+    helm:
+      releaseName: ecg-api
+      # Chemin relatif au chart : le fichier modifié par la CI à chaque nouvelle image.
+      valueFiles:
+        - ../../deploy/envs/dev/values.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ecg-dev
+  syncPolicy:
+    automated:
+      prune: true      # une ressource retirée de Git est supprimée du cluster
+      selfHeal: true   # une modification manuelle du cluster est annulée
+    syncOptions:
+      - CreateNamespace=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m

@@ -1,0 +1,22 @@
+# AppProject : périmètre de confiance des applications du projet.
+# Une Application de ce projet ne peut lire que ce dépôt et déployer que dans les namespaces ecg-*,
+# même si quelqu'un modifie son manifeste : moindre privilège côté GitOps.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: ecg
+  namespace: argocd
+spec:
+  description: Plateforme MLOps ECG
+  sourceRepos:
+    - https://github.com/eya-lakhal/mlops-gitops-ecg.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: "ecg-*"
+  # Ressources à l'échelle du cluster autorisées : uniquement la création des namespaces.
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
