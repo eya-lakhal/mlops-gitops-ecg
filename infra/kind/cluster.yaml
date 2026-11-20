@@ -1,0 +1,9 @@
+# Cluster Kubernetes local : chaque « nœud » est un conteneur Docker.
+# 1 control-plane + 1 worker : assez pour séparer le plan de contrôle des charges applicatives,
+# tout en tenant dans les 8 Go alloués à WSL2.
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: mlops
+nodes:
+  - role: control-plane
+  - role: worker

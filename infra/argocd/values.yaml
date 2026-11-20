@@ -1,0 +1,38 @@
+# Installation d'ArgoCD (chart argo-cd 10.18.1 = ArgoCD v3.6.1) allégée pour un cluster kind.
+# helm upgrade --install argocd oci://ghcr.io/argoproj/argo-helm/argo-cd --version 10.18.1 \
+#   -n argocd --create-namespace -f infra/argocd/values.yaml --wait
+
+# Composants inutiles en local : SSO (Dex) et notifications.
+# (Le contrôleur ApplicationSet n'a pas d'interrupteur dans ce chart : il reste actif.)
+dex:
+  enabled: false
+notifications:
+  enabled: false
+
+configs:
+  params:
+    # TLS terminé ailleurs (ici : accès par port-forward en local). En production : Ingress + TLS.
+    server.insecure: true
+  cm:
+    # Fréquence de comparaison Git <-> cluster (120 s par défaut). Un webhook GitHub la rendrait
+    # instantanée, mais il faudrait exposer ArgoCD sur Internet.
+    timeout.reconciliation: 60s
+    timeout.reconciliation.jitter: 10s
+
+# Ressources modestes : le cluster partage 8 Go avec Prometheus, Grafana et l'API.
+controller:
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 768Mi }
+repoServer:
+  resources:
+    requests: { cpu: 50m, memory: 128Mi }
+    limits: { memory: 512Mi }
+server:
+  resources:
+    requests: { cpu: 50m, memory: 64Mi }
+    limits: { memory: 256Mi }
+redis:
+  resources:
+    requests: { cpu: 25m, memory: 32Mi }
+    limits: { memory: 128Mi }
