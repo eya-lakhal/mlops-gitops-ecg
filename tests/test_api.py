@@ -88,6 +88,17 @@ def test_metrics_route_labels_have_bounded_cardinality(client):
     assert "random-1" not in text
 
 
+def test_fault_injection_returns_500_and_is_counted(tmp_path, monkeypatch):
+    write_model(tmp_path / "model")
+    monkeypatch.setenv("MODEL_DIR", str(tmp_path / "model"))
+    monkeypatch.setenv("FAULT_RATE", "1")
+    with TestClient(app) as c:
+        assert c.post("/predict", json={"beats": beats(1)}).status_code == 500
+        assert c.get("/health").status_code == 200  # la liveness n'est pas affectée
+        text = c.get("/metrics").text
+    assert 'http_requests_total{method="POST",route="/predict",status="500"}' in text
+
+
 def test_tampered_weights_prevent_startup(tmp_path, monkeypatch):
     write_model(tmp_path / "model", tamper=True)
     monkeypatch.setenv("MODEL_DIR", str(tmp_path / "model"))

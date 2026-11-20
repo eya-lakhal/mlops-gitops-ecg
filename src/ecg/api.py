@@ -14,6 +14,7 @@ import hashlib
 import json
 import logging
 import os
+import random
 import time
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -73,6 +74,10 @@ async def lifespan(app: FastAPI):
     torch.set_num_threads(int(os.environ.get("TORCH_NUM_THREADS", "1")))
     model_dir = Path(os.environ.get("MODEL_DIR", "models/ecg-cnn-bilstm"))
     app.state.model, app.state.meta = load_model(model_dir)
+    app.state.fault_rate = float(os.environ.get("FAULT_RATE", "0"))
+    if app.state.fault_rate > 0:
+        logger.warning("Injection de pannes ACTIVE : %.0f %% des /predict renverront 500",
+                       app.state.fault_rate * 100)
     meta = app.state.meta
     MODEL_INFO.labels(meta["model_name"], meta["version"], meta["run_id"]).set(1)
     logger.info("Modèle %s v%s chargé depuis %s", meta["model_name"], meta["version"], model_dir)
@@ -148,6 +153,10 @@ def model_info(request: Request) -> dict:
 def predict(body: PredictRequest, request: Request) -> PredictResponse:
     # Route synchrone : FastAPI l'exécute dans un pool de threads, l'inférence
     # (bloquante) ne gèle donc pas la boucle d'événements.
+    # Chaos engineering : FAULT_RATE (0 par défaut) simule une panne partielle pour vérifier
+    # que le SLO, le budget d'erreur et les alertes réagissent comme prévu.
+    if random.random() < request.app.state.fault_rate:
+        raise HTTPException(status_code=500, detail="Panne injectée (FAULT_RATE)")
     model, meta = request.app.state.model, request.app.state.meta
     classes, version = meta["classes"], meta["version"]
     with torch.inference_mode():
