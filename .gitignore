@@ -38,3 +38,6 @@ discord-webhook*.txt
 Thumbs.db
 .vscode/
 .idea/
+
+# Rapports HTML Evidently (plusieurs Mo, regénérables) : seul summary.json est versionné
+reports/drift/*.html

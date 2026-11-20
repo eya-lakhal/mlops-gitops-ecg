@@ -27,6 +27,11 @@ api = [
     "prometheus-client>=0.20",
     "pydantic>=2.7",
 ]
+drift = [
+    "evidently>=0.7.23,<0.8",
+    # Evidently 0.7.23 importe une fonction interne retirée de pandas 3.
+    "pandas>=2.2,<3",
+]
 dev = [
     "pytest>=8.0",
     "ruff>=0.6",

@@ -1,0 +1,213 @@
+{
+  "modele": "1",
+  "reference_ds1": {
+    "part_anomalies_predites": 0.0843,
+    "confiance_moyenne": 0.8613
+  },
+  "scenarios": {
+    "ds2": {
+      "colonnes": {
+        "rr_pre": {
+          "valeur": 0.1669,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_post": {
+          "valeur": 0.1458,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_pre_ratio": {
+          "valeur": 0.1231,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_post_ratio": {
+          "valeur": 0.0916,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": false
+        },
+        "r_amplitude": {
+          "valeur": 0.1002,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "amplitude_crete_a_crete": {
+          "valeur": 0.2858,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "energie_hf": {
+          "valeur": 0.2118,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "asymetrie": {
+          "valeur": 0.1518,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "confiance": {
+          "valeur": 0.2158,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "classe_predite": {
+          "valeur": 0.01,
+          "methode": "Jensen-Shannon distance",
+          "seuil": 0.1,
+          "derive": false
+        }
+      },
+      "n_colonnes_en_derive": 8,
+      "part_colonnes_en_derive": 0.8,
+      "part_anomalies_predites": 0.0923,
+      "confiance_moyenne": 0.8548
+    },
+    "capteur_bruite": {
+      "colonnes": {
+        "rr_pre": {
+          "valeur": 0.1669,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_post": {
+          "valeur": 0.1458,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_pre_ratio": {
+          "valeur": 0.1231,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_post_ratio": {
+          "valeur": 0.0916,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": false
+        },
+        "r_amplitude": {
+          "valeur": 0.0844,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": false
+        },
+        "amplitude_crete_a_crete": {
+          "valeur": 0.5788,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "energie_hf": {
+          "valeur": 10.6186,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "asymetrie": {
+          "valeur": 0.6169,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "confiance": {
+          "valeur": 3.7561,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "classe_predite": {
+          "valeur": 0.1282,
+          "methode": "Jensen-Shannon distance",
+          "seuil": 0.1,
+          "derive": true
+        }
+      },
+      "n_colonnes_en_derive": 8,
+      "part_colonnes_en_derive": 0.8,
+      "part_anomalies_predites": 0.1713,
+      "confiance_moyenne": 0.6059
+    },
+    "tachycardie": {
+      "colonnes": {
+        "rr_pre": {
+          "valeur": 1.2285,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_post": {
+          "valeur": 1.2537,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_pre_ratio": {
+          "valeur": 0.1231,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "rr_post_ratio": {
+          "valeur": 0.0916,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": false
+        },
+        "r_amplitude": {
+          "valeur": 0.1002,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "amplitude_crete_a_crete": {
+          "valeur": 0.2858,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "energie_hf": {
+          "valeur": 0.2118,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "asymetrie": {
+          "valeur": 0.1518,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "confiance": {
+          "valeur": 0.2355,
+          "methode": "Wasserstein distance (normed)",
+          "seuil": 0.1,
+          "derive": true
+        },
+        "classe_predite": {
+          "valeur": 0.012,
+          "methode": "Jensen-Shannon distance",
+          "seuil": 0.1,
+          "derive": false
+        }
+      },
+      "n_colonnes_en_derive": 8,
+      "part_colonnes_en_derive": 0.8,
+      "part_anomalies_predites": 0.094,
+      "confiance_moyenne": 0.8453
+    }
+  }
+}
