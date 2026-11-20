@@ -1,0 +1,112 @@
+{{- if .Values.slo.enabled }}
+{{- /*
+SLO de disponibilité : 99 % des POST /predict sans erreur 5xx sur 30 jours glissants.
+Budget d'erreur = 1 - objectif = 1 %. Les alertes suivent la méthode « multi-window,
+multi-burn-rate » du SRE Workbook de Google : on alerte sur la VITESSE de consommation du
+budget, avec une fenêtre longue (significative) ET une fenêtre courte (l'alerte s'arrête
+vite quand le problème est résolu).
+*/}}
+{{- $ns := .Release.Namespace }}
+{{- $job := include "ecg-api.fullname" . }}
+{{- $sel := printf "namespace=\"%s\",job=\"%s\",route=\"/predict\"" $ns $job }}
+{{- $budget := printf "(1 - %v)" .Values.slo.objective }}
+{{- $ratio := "ecg_api:slo_errors_per_request:ratio_rate" }}
+{{- $match := printf "{namespace=\"%s\",service=\"%s\"}" $ns $job }}
+{{- $runbook := "https://github.com/eya-lakhal/mlops-gitops-ecg/blob/main/docs/runbook.md" }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ $job }}-slo
+  labels:
+    {{- include "ecg-api.labels" . | nindent 4 }}
+spec:
+  groups:
+    - name: ecg-api-slo.rules
+      interval: 30s
+      rules:
+        {{- range $w := list "5m" "30m" "1h" "2h" "6h" "1d" "3d" }}
+        # Part des requêtes /predict en erreur 5xx sur {{ $w }}
+        - record: {{ $ratio }}{{ $w }}
+          expr: |
+            (sum(rate(http_requests_total{ {{ $sel }},status=~"5.." }[{{ $w }}])) or vector(0))
+            /
+            sum(rate(http_requests_total{ {{ $sel }} }[{{ $w }}]))
+          labels:
+            namespace: {{ $ns }}
+            service: {{ $job }}
+        {{- end }}
+
+    - name: ecg-api-slo.alerts
+      rules:
+        # Consommation rapide : 2 % du budget mensuel en 1 h, ou 5 % en 6 h -> intervention immédiate.
+        - alert: EcgApiErrorBudgetBurnFast
+          expr: |
+            (
+              {{ $ratio }}1h{{ $match }} > (14.4 * {{ $budget }})
+              and
+              {{ $ratio }}5m{{ $match }} > (14.4 * {{ $budget }})
+            )
+            or
+            (
+              {{ $ratio }}6h{{ $match }} > (6 * {{ $budget }})
+              and
+              {{ $ratio }}30m{{ $match }} > (6 * {{ $budget }})
+            )
+          for: 2m
+          labels:
+            severity: critical
+            team: {{ .Values.slo.team }}
+          annotations:
+            summary: "ecg-api ({{ $ns }}) consomme son budget d'erreur trop vite"
+            description: {{`"{{ $value | humanizePercentage }} des POST /predict échouent (5xx). Au rythme actuel, le budget mensuel de 1 % sera épuisé en moins de 2 jours."`}}
+            runbook_url: "{{ $runbook }}#ecgapierrorbudgetburnfast"
+
+        # Consommation lente : 10 % du budget en 3 jours -> à traiter dans la journée.
+        - alert: EcgApiErrorBudgetBurnSlow
+          expr: |
+            (
+              {{ $ratio }}1d{{ $match }} > (3 * {{ $budget }})
+              and
+              {{ $ratio }}2h{{ $match }} > (3 * {{ $budget }})
+            )
+            or
+            (
+              {{ $ratio }}3d{{ $match }} > (1 * {{ $budget }})
+              and
+              {{ $ratio }}6h{{ $match }} > (1 * {{ $budget }})
+            )
+          for: 15m
+          labels:
+            severity: warning
+            team: {{ .Values.slo.team }}
+          annotations:
+            summary: "ecg-api ({{ $ns }}) érode lentement son budget d'erreur"
+            description: {{`"Taux d'erreur de {{ $value | humanizePercentage }} sur /predict, au-dessus du rythme soutenable."`}}
+            runbook_url: "{{ $runbook }}#ecgapierrorbudgetburnslow"
+
+        # Plus aucune cible saine : l'API ne répond plus du tout (le taux d'erreur ne peut pas le voir).
+        - alert: EcgApiDown
+          expr: absent(up{namespace="{{ $ns }}",job="{{ $job }}"} == 1)
+          for: 2m
+          labels:
+            severity: critical
+            team: {{ .Values.slo.team }}
+          annotations:
+            summary: "ecg-api ({{ $ns }}) : aucune instance joignable par Prometheus"
+            description: "Aucun Pod ecg-api n'expose /metrics depuis 2 minutes."
+            runbook_url: "{{ $runbook }}#ecgapidown"
+
+        - alert: EcgApiHighLatency
+          expr: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{ {{ $sel }} }[5m]))
+            ) > {{ .Values.slo.latencyThresholdSeconds }}
+          for: 10m
+          labels:
+            severity: warning
+            team: {{ .Values.slo.team }}
+          annotations:
+            summary: "ecg-api ({{ $ns }}) : latence p95 de /predict trop élevée"
+            description: {{`"p95 = {{ $value | humanizeDuration }} depuis 10 minutes."`}}
+            runbook_url: "{{ $runbook }}#ecgapihighlatency"
+{{- end }}

@@ -8,7 +8,9 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
-    paths-ignore: ["**.md", "docs/**"]
+    # Changer une valeur d'environnement ou l'infrastructure ne doit pas reconstruire l'image :
+    # ArgoCD applique ces fichiers directement depuis Git.
+    paths-ignore: ["**.md", "docs/**", "deploy/**", "infra/**"]
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -73,6 +75,15 @@ jobs:
 
       - name: Rendu des manifestes dev
         run: helm template ecg-api charts/ecg-api -f deploy/envs/dev/values.yaml
+
+      # Le webhook d'admission de Prometheus Operator est désactivé en local : les règles SLO
+      # sont donc validées ici, avant d'atteindre le cluster.
+      - name: Validation des règles Prometheus (promtool)
+        run: |
+          helm template ecg-api charts/ecg-api -n ecg-dev -f deploy/envs/dev/values.yaml \
+            --show-only templates/prometheusrule.yaml | yq '{"groups": .spec.groups}' > rules.yaml
+          docker run --rm -v "$PWD:/w" --entrypoint promtool \
+            quay.io/prometheus/prometheus:v3.16.0 check rules /w/rules.yaml
 
   build:
     name: Build, scan et push de l'image

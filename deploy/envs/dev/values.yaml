@@ -13,3 +13,12 @@ resources:
   limits:
     cpu: "1"
     memory: 1Gi
+# Observabilité (Phase 5) : scraping, SLO 99 % + alertes de burn rate, dashboard Grafana.
+serviceMonitor:
+  enabled: true
+slo:
+  enabled: true
+dashboard:
+  enabled: true
+# Chaos engineering : mettre "0.3" pour simuler 30 % d'erreurs, puis revenir à "0".
+faultRate: "0"

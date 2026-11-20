@@ -1,0 +1,166 @@
+{
+  "uid": "ecg-api-slo",
+  "title": "ECG API — SLO et budget d'erreur",
+  "description": "SLO de disponibilité 99 % sur POST /predict (30 jours glissants), budget d'erreur, signaux RED et signaux métier du modèle.",
+  "tags": ["ecg", "slo", "mlops"],
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "graphTooltip": 1,
+  "refresh": "30s",
+  "time": { "from": "now-3h", "to": "now" },
+  "timezone": "browser",
+  "templating": {
+    "list": [
+      {
+        "name": "namespace",
+        "label": "Namespace",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": { "query": "label_values(ecg_model_info, namespace)", "refId": "ns" },
+        "definition": "label_values(ecg_model_info, namespace)",
+        "refresh": 2,
+        "current": { "text": "ecg-dev", "value": "ecg-dev" }
+      },
+      {
+        "name": "slo",
+        "label": "Objectif SLO",
+        "type": "constant",
+        "query": "0.99",
+        "hide": 2
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1, "type": "row", "title": "SLO : disponibilité de POST /predict (fenêtre de 30 jours)", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 }
+    },
+    {
+      "id": 2, "type": "stat", "title": "Objectif",
+      "description": "99 % des requêtes /predict doivent réussir (pas de 5xx).",
+      "gridPos": { "h": 5, "w": 4, "x": 0, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "expr": "vector($slo)", "instant": true }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "color": { "mode": "fixed", "fixedColor": "blue" } } },
+      "options": { "colorMode": "background", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 3, "type": "stat", "title": "Disponibilité mesurée (SLI)",
+      "description": "1 - (erreurs 5xx / requêtes) sur 30 jours.",
+      "gridPos": { "h": 5, "w": 5, "x": 4, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "instant": true,
+        "expr": "1 - ((sum(increase(http_requests_total{namespace=\"$namespace\",route=\"/predict\",status=~\"5..\"}[30d])) or vector(0)) / sum(increase(http_requests_total{namespace=\"$namespace\",route=\"/predict\"}[30d])))" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 3,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "green", "value": 0.99 } ] } } },
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 4, "type": "gauge", "title": "Budget d'erreur restant",
+      "description": "Part du 1 % d'erreurs autorisé sur 30 jours qui n'a pas encore été consommée. Sous 0 : SLO violé.",
+      "gridPos": { "h": 5, "w": 5, "x": 9, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "instant": true,
+        "expr": "1 - ((sum(increase(http_requests_total{namespace=\"$namespace\",route=\"/predict\",status=~\"5..\"}[30d])) or vector(0)) / sum(increase(http_requests_total{namespace=\"$namespace\",route=\"/predict\"}[30d]))) / (1 - $slo)" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "decimals": 1, "min": -0.5, "max": 1,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "red", "value": null }, { "color": "orange", "value": 0 }, { "color": "yellow", "value": 0.25 }, { "color": "green", "value": 0.5 } ] } } },
+      "options": { "showThresholdMarkers": true, "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 5, "type": "stat", "title": "Burn rate (1 h)",
+      "description": "Vitesse de consommation du budget : 1 = au rythme qui l'épuise en 30 jours exactement ; 14,4 = alerte critique.",
+      "gridPos": { "h": 5, "w": 5, "x": 14, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "instant": true,
+        "expr": "((sum(rate(http_requests_total{namespace=\"$namespace\",route=\"/predict\",status=~\"5..\"}[1h])) or vector(0)) / sum(rate(http_requests_total{namespace=\"$namespace\",route=\"/predict\"}[1h]))) / (1 - $slo)" }],
+      "fieldConfig": { "defaults": { "unit": "none", "decimals": 2,
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "green", "value": null }, { "color": "orange", "value": 1 }, { "color": "red", "value": 14.4 } ] } } },
+      "options": { "colorMode": "background", "graphMode": "area", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 6, "type": "stat", "title": "Modèle servi",
+      "gridPos": { "h": 5, "w": 5, "x": 19, "y": 1 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "instant": true, "expr": "max by (version) (ecg_model_info{namespace=\"$namespace\"})", "legendFormat": "v{{version}}" }],
+      "options": { "textMode": "name", "colorMode": "none", "graphMode": "none", "reduceOptions": { "calcs": ["lastNotNull"] } }
+    },
+    {
+      "id": 7, "type": "timeseries", "title": "Taux d'erreur 5xx vs seuil du SLO",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "legendFormat": "Taux d'erreur (5 min)",
+          "expr": "(sum(rate(http_requests_total{namespace=\"$namespace\",route=\"/predict\",status=~\"5..\"}[5m])) or vector(0)) / sum(rate(http_requests_total{namespace=\"$namespace\",route=\"/predict\"}[5m]))" },
+        { "refId": "B", "legendFormat": "Seuil SLO (1 %)", "expr": "vector(1 - $slo)" },
+        { "refId": "C", "legendFormat": "Seuil d'alerte rapide (14,4 x)", "expr": "vector(14.4 * (1 - $slo))" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "custom": { "fillOpacity": 10 } },
+        "overrides": [
+          { "matcher": { "id": "byName", "options": "Seuil SLO (1 %)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "orange" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "custom.fillOpacity", "value": 0 } ] },
+          { "matcher": { "id": "byName", "options": "Seuil d'alerte rapide (14,4 x)" }, "properties": [ { "id": "color", "value": { "mode": "fixed", "fixedColor": "red" } }, { "id": "custom.lineStyle", "value": { "fill": "dash", "dash": [10, 10] } }, { "id": "custom.fillOpacity", "value": 0 } ] }
+        ] }
+    },
+    {
+      "id": 8, "type": "timeseries", "title": "Budget d'erreur restant dans le temps",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "legendFormat": "Budget restant",
+        "expr": "1 - ((sum(increase(http_requests_total{namespace=\"$namespace\",route=\"/predict\",status=~\"5..\"}[30d])) or vector(0)) / sum(increase(http_requests_total{namespace=\"$namespace\",route=\"/predict\"}[30d]))) / (1 - $slo)" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "custom": { "fillOpacity": 15, "thresholdsStyle": { "mode": "line+area" } },
+        "thresholds": { "mode": "absolute", "steps": [ { "color": "transparent", "value": null }, { "color": "red", "value": -1000 }, { "color": "transparent", "value": 0 } ] } } }
+    },
+    {
+      "id": 9, "type": "row", "title": "Signaux RED", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 14 }
+    },
+    {
+      "id": 10, "type": "timeseries", "title": "Trafic /predict par code de statut",
+      "gridPos": { "h": 8, "w": 12, "x": 0, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "legendFormat": "{{status}}",
+        "expr": "sum by (status) (rate(http_requests_total{namespace=\"$namespace\",route=\"/predict\"}[$__rate_interval]))" }],
+      "fieldConfig": { "defaults": { "unit": "reqps", "custom": { "stacking": { "mode": "normal" }, "fillOpacity": 30 } } }
+    },
+    {
+      "id": 11, "type": "timeseries", "title": "Latence /predict (p50, p95, p99)",
+      "gridPos": { "h": 8, "w": 12, "x": 12, "y": 15 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [
+        { "refId": "A", "legendFormat": "p50", "expr": "histogram_quantile(0.50, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"$namespace\",route=\"/predict\"}[$__rate_interval])))" },
+        { "refId": "B", "legendFormat": "p95", "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"$namespace\",route=\"/predict\"}[$__rate_interval])))" },
+        { "refId": "C", "legendFormat": "p99", "expr": "histogram_quantile(0.99, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"$namespace\",route=\"/predict\"}[$__rate_interval])))" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s", "min": 0 } }
+    },
+    {
+      "id": 12, "type": "row", "title": "Signaux du modèle", "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 23 }
+    },
+    {
+      "id": 13, "type": "timeseries", "title": "Battements classés par classe",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "legendFormat": "{{predicted_class}}",
+        "expr": "sum by (predicted_class) (rate(ecg_predictions_total{namespace=\"$namespace\"}[$__rate_interval]))" }],
+      "fieldConfig": { "defaults": { "unit": "short", "custom": { "stacking": { "mode": "percent" }, "fillOpacity": 40 } } }
+    },
+    {
+      "id": 14, "type": "timeseries", "title": "Part de battements anormaux prédits",
+      "description": "Une variation brutale sans changement de modèle peut signaler une dérive des données d'entrée.",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "legendFormat": "Anomalies (S, V, F)",
+        "expr": "sum(rate(ecg_predictions_total{namespace=\"$namespace\",predicted_class!=\"N\"}[5m])) / sum(rate(ecg_predictions_total{namespace=\"$namespace\"}[5m]))" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } }
+    },
+    {
+      "id": 15, "type": "timeseries", "title": "Confiance moyenne du modèle",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 24 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "targets": [{ "refId": "A", "legendFormat": "Confiance moyenne",
+        "expr": "sum(rate(ecg_prediction_confidence_sum{namespace=\"$namespace\"}[5m])) / sum(rate(ecg_prediction_confidence_count{namespace=\"$namespace\"}[5m]))" }],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "min": 0, "max": 1 } }
+    }
+  ]
+}

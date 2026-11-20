@@ -90,6 +90,27 @@ strategy:
     maxSurge: 1
     maxUnavailable: 0
 
+# --- Observabilité (nécessite les CRD de kube-prometheus-stack) ----------------------------
+serviceMonitor:
+  enabled: false
+  interval: 15s
+
+slo:
+  # PrometheusRule : règles d'enregistrement SLI + alertes de burn rate.
+  enabled: false
+  # Objectif de disponibilité de POST /predict (fenêtre glissante de 30 jours).
+  objective: 0.99
+  # Label utilisé par Alertmanager pour router les alertes vers Discord.
+  team: ecg
+  latencyThresholdSeconds: 0.5
+
+dashboard:
+  # ConfigMap détectée par le sidecar Grafana (label grafana_dashboard=1).
+  enabled: false
+
+# Chaos engineering : fraction des requêtes /predict qui renvoient volontairement 500.
+faultRate: "0"
+
 nodeSelector: {}
 tolerations: []
 affinity: {}

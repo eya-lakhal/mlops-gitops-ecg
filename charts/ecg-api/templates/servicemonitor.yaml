@@ -1,0 +1,17 @@
+{{- if .Values.serviceMonitor.enabled }}
+# Indique à Prometheus Operator de scraper /metrics sur chaque Pod derrière le Service.
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "ecg-api.fullname" . }}
+  labels:
+    {{- include "ecg-api.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      {{- include "ecg-api.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval }}
+{{- end }}

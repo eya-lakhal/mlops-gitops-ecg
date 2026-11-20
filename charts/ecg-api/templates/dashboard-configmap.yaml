@@ -1,0 +1,13 @@
+{{- if .Values.dashboard.enabled }}
+# Dashboard as code : le sidecar de Grafana importe toute ConfigMap portant ce label.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ecg-api.fullname" . }}-dashboard
+  labels:
+    {{- include "ecg-api.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  ecg-api-slo.json: |-
+{{ .Files.Get "dashboards/ecg-api-slo.json" | indent 4 }}
+{{- end }}
