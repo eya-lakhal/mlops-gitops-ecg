@@ -5,7 +5,7 @@ replicaCount: 1
 image:
   # Mis à jour automatiquement par le job « gitops » de la CI à chaque push sur main.
   # Toujours un tag immuable (sha du commit), jamais « latest ».
-  tag: "sha-bbb66bf"
+  tag: "sha-e63cd64"
 resources:
   requests:
     cpu: 200m
