@@ -25,5 +25,8 @@ autoscaling:
   enabled: true
   minReplicas: 2
   maxReplicas: 5
+# Déploiement progressif (Phase 7) : un Rollout canary avec analyse Prometheus remplace le Deployment.
+rollout:
+  enabled: true
 # Chaos engineering : mettre "0.3" pour simuler 30 % d'erreurs, puis revenir à "0".
 faultRate: "0"
