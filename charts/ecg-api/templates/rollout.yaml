@@ -1,0 +1,46 @@
+{{- if .Values.rollout.enabled }}
+# Rollout (Argo Rollouts) : remplace le Deployment pour un déploiement CANARY.
+# Une nouvelle image (donc un nouveau modèle) reçoit d'abord une petite part du trafic ; une
+# analyse Prometheus tourne en continu et annule automatiquement le déploiement si la
+# nouvelle version dégrade le SLO.
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ include "ecg-api.fullname" . }}
+  labels:
+    {{- include "ecg-api.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  revisionHistoryLimit: 5
+  selector:
+    matchLabels:
+      {{- include "ecg-api.selectorLabels" . | nindent 6 }}
+  template:
+    {{- include "ecg-api.podTemplate" . | nindent 4 }}
+  strategy:
+    canary:
+      # Sans maillage de service, le poids est approché par la proportion de Pods
+      # (le Service envoie le trafic à tous les Pods prêts, stables comme canary).
+      canaryMetadata:
+        labels:
+          role: canary
+      stableMetadata:
+        labels:
+          role: stable
+      maxSurge: 1
+      maxUnavailable: 0
+      # Analyse en arrière-plan pendant toute la progression : un échec = abandon et retour
+      # immédiat à 100 % sur la version stable.
+      analysis:
+        startingStep: 1
+        templates:
+          - templateName: {{ include "ecg-api.fullname" . }}-canary
+        args:
+          - name: canary-hash
+            valueFrom:
+              podTemplateHashValue: Latest
+      steps:
+        {{- toYaml .Values.rollout.steps | nindent 8 }}
+{{- end }}

@@ -1,0 +1,57 @@
+# Trafic constant et modéré (5 req/s pendant 15 min) : sert de « vrai trafic » pendant un
+# déploiement canary, pour que l'AnalysisTemplate mesure la nouvelle version.
+# Même ConfigMap que job.yaml (k6-predict).
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: k6-steady
+  labels:
+    app.kubernetes.io/name: k6
+    app.kubernetes.io/part-of: mlops-gitops-ecg
+spec:
+  backoffLimit: 0
+  ttlSecondsAfterFinished: 3600
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: k6
+    spec:
+      restartPolicy: Never
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 12345
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: k6
+          image: grafana/k6:2.4.0
+          args: ["run", "/scripts/predict.js"]
+          workingDir: /scripts
+          env:
+            - name: BASE_URL
+              value: http://ecg-api.ecg-dev.svc
+            - name: MODE
+              value: steady
+            - name: RATE
+              value: "5"
+            - name: DURATION
+              value: 15m
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop: ["ALL"]
+          resources:
+            requests: { cpu: 100m, memory: 96Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          volumeMounts:
+            - name: scripts
+              mountPath: /scripts
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: scripts
+          configMap:
+            name: k6-predict
+        - name: tmp
+          emptyDir: {}

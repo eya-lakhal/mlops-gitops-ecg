@@ -1,0 +1,57 @@
+{{- if .Values.rollout.enabled }}
+{{- $ns := .Release.Namespace }}
+{{- $job := include "ecg-api.fullname" . }}
+{{- $canary := printf "namespace=\"%s\",job=\"%s\",route=\"/predict\",rollouts_pod_template_hash=\"{{args.canary-hash}}\"" $ns $job }}
+# Critères de promotion du canary, mesurés UNIQUEMENT sur les Pods de la nouvelle version.
+apiVersion: argoproj.io/v1alpha1
+kind: AnalysisTemplate
+metadata:
+  name: {{ $job }}-canary
+  labels:
+    {{- include "ecg-api.labels" . | nindent 4 }}
+spec:
+  args:
+    - name: canary-hash
+  metrics:
+    # 1. Fiabilité : même seuil que le SLO (99 % de requêtes sans 5xx).
+    - name: taux-de-succes
+      initialDelay: {{ .Values.rollout.analysis.initialDelay }}
+      interval: {{ .Values.rollout.analysis.interval }}
+      failureLimit: 1
+      successCondition: result[0] >= {{ .Values.slo.objective }}
+      provider:
+        prometheus:
+          address: {{ .Values.rollout.analysis.prometheusAddress }}
+          query: |
+            sum(rate(http_requests_total{ {{ $canary }},status!~"5.." }[1m]))
+            /
+            sum(rate(http_requests_total{ {{ $canary }} }[1m]))
+
+    # 2. Performance : p95 sous le seuil de l'alerte EcgApiHighLatency.
+    - name: latence-p95
+      initialDelay: {{ .Values.rollout.analysis.initialDelay }}
+      interval: {{ .Values.rollout.analysis.interval }}
+      failureLimit: 1
+      successCondition: result[0] <= {{ .Values.slo.latencyThresholdSeconds }}
+      provider:
+        prometheus:
+          address: {{ .Values.rollout.analysis.prometheusAddress }}
+          query: |
+            histogram_quantile(0.95,
+              sum by (le) (rate(http_request_duration_seconds_bucket{ {{ $canary }} }[1m])))
+
+    # 3. Garde-fou MLOps : un modèle qui répond « 200 OK » mais hésite sur tout est aussi
+    #    une régression. Confiance moyenne minimale de la classe prédite.
+    - name: confiance-modele
+      initialDelay: {{ .Values.rollout.analysis.initialDelay }}
+      interval: {{ .Values.rollout.analysis.interval }}
+      failureLimit: 1
+      successCondition: result[0] >= {{ .Values.rollout.analysis.minConfidence }}
+      provider:
+        prometheus:
+          address: {{ .Values.rollout.analysis.prometheusAddress }}
+          query: |
+            sum(rate(ecg_prediction_confidence_sum{namespace="{{ $ns }}",rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}"}[2m]))
+            /
+            sum(rate(ecg_prediction_confidence_count{namespace="{{ $ns }}",rollouts_pod_template_hash="{{`{{args.canary-hash}}`}}"}[2m]))
+{{- end }}

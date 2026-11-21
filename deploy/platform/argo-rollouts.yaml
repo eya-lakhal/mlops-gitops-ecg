@@ -1,0 +1,42 @@
+# Argo Rollouts : contrôleur de déploiements progressifs (canary, blue-green) avec analyse.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io/foreground
+spec:
+  project: platform
+  source:
+    repoURL: ghcr.io/argoproj/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.43.12
+    helm:
+      releaseName: argo-rollouts
+      valuesObject:
+        controller:
+          replicas: 1
+          resources:
+            requests: { cpu: 25m, memory: 64Mi }
+            limits: { memory: 256Mi }
+          metrics:
+            enabled: true
+            serviceMonitor:
+              enabled: true
+        # Interface web pour suivre la progression du canary (port-forward local).
+        dashboard:
+          enabled: true
+          resources:
+            requests: { cpu: 10m, memory: 32Mi }
+            limits: { memory: 128Mi }
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

@@ -43,7 +43,9 @@ n'envoyait aucune requête, sans qu'aucun signal ne le montre. C'est l'enseignem
 | 00:18:43 | Mitigation : `git revert` → commit `f77f187` (`faultRate: "0"`) poussé |
 | 00:19:11 | ArgoCD a redéployé la version saine (**28 s**) ; trafic de contrôle : 2 716 requêtes, 0 erreur |
 | 00:27:17 | `EcgApiErrorBudgetBurnSlow` passe en firing : **notification Discord n°2** (attendu, voir analyse) |
-| RESOLUTION_FAST | Résolution de `EcgApiErrorBudgetBurnFast` : notification ✅ RESOLVED |
+| ≈00:46 | `EcgApiErrorBudgetBurnFast` résolue : sa fenêtre de 30 min ne contient plus les erreurs |
+| 00:47:53 | **Notification Discord n°3** : ✅ RESOLVED (3 envois au total, 0 échec) |
+| Plus tard | `EcgApiErrorBudgetBurnSlow` retombe d'elle-même quand la fenêtre de 2 h est purgée |
 
 **Indicateurs** : délai de détection (début des erreurs → alerte firing) ≈ **7 min** ; délai de mitigation (alerte →
 correction déployée) ≈ **2 min** ; la correction elle-même est un commit Git, donc tracée et réversible.
@@ -79,7 +81,7 @@ correction déployée) ≈ **2 min** ; la correction elle-même est un commit Gi
 | Action | Statut |
 |---|---|
 | Générateur de trafic : progression **toutes les 2 min**, comptage séparé des 500 et des erreurs réseau | ✅ fait pendant l'exercice |
-| Tests de charge exécutés **dans le cluster** (Job k6 → Service), insensibles aux redémarrages de Pods | ✅ Phase 6 (`load/k6/job.yaml`) |
+| Tests de charge exécutés **dans le cluster** (Job k6 → Service), insensibles aux redémarrages de Pods | ✅ Phase 6 (`load/k6/job.yaml`, résultats dans le README) |
 | Seuils k6 alignés sur le SLO (`http_req_failed < 1 %`, p95 < 500 ms) : un test sans trafic valide échoue | ✅ Phase 6 |
 | Runbook : préciser que l'alerte lente peut se déclencher **après** une correction et retomber d'elle-même | ✅ ajouté au runbook |
 | Annoncer les *game days* dans le canal d'alerte avant de commencer | À faire |

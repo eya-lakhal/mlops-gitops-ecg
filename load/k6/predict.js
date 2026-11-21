@@ -7,8 +7,21 @@ import { check } from "k6";
 const BASE_URL = __ENV.BASE_URL || "http://ecg-api.ecg-dev.svc";
 const payload = open("./beats.json"); // 8 vrais battements MIT-BIH (patients de test)
 
+// MODE=steady : trafic constant et modéré (ex. pendant un déploiement canary, pour que
+// l'analyse Prometheus dispose de mesures sur les Pods de la nouvelle version).
+const STEADY = {
+  trafic_constant: {
+    executor: "constant-arrival-rate",
+    rate: Number(__ENV.RATE || 5),
+    timeUnit: "1s",
+    duration: __ENV.DURATION || "15m",
+    preAllocatedVUs: 10,
+    maxVUs: 30,
+  },
+};
+
 export const options = {
-  scenarios: {
+  scenarios: __ENV.MODE === "steady" ? STEADY : {
     montee_en_charge: {
       // Débit imposé (requêtes/s) plutôt qu'un nombre d'utilisateurs : la charge reste la même
       // même si l'API ralentit, ce qui révèle vraiment la saturation.

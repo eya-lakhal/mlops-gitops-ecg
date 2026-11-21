@@ -84,3 +84,13 @@ du README final. Format : symptôme → cause → solution → leçon.
 - **Webhook d'admission** de Prometheus Operator désactivé (ses Jobs de certificats se synchronisent mal avec ArgoCD) ; compensé par `promtool check rules` dans la CI.
 - **Mot de passe Grafana** dans un Secret créé hors Git : un mot de passe aléatoire généré par le chart changerait à chaque rendu ArgoCD (désynchronisation permanente).
 - **CRD trop volumineuses** pour `kubectl apply` côté client (limite de 256 Ko sur l'annotation `last-applied-configuration`) : `ServerSideApply=true` dans l'Application ArgoCD.
+
+## Exploitation : redémarrage du PC
+
+### Docker Desktop ne démarre plus après un redémarrage de Windows
+- **Symptôme** : `kubectl` → `connection refused` ; Docker Desktop affiche une erreur avec seulement « Quit » ou « Reset to factory defaults » ; la distribution WSL `docker-desktop` reste `Stopped`.
+- **Diagnostic** : `%LOCALAPPDATA%\Docker\log\host\com.docker.backend.exe.log` → `initializing Ingest server: listening on unix://…/Docker/run/sailor-ingest.sock: rename … .stale: The file cannot be accessed by the system`, puis la même erreur sur `docker-secrets-engine/engine.sock`.
+- **Cause** : après un arrêt brutal, Docker laisse des **sockets Unix** orphelins (des *reparse points* NTFS) que Windows ne sait ni renommer ni supprimer (`Remove-Item` et `del` échouent tous les deux). Au démarrage, Docker essaie de les renommer et abandonne.
+- **Solution** : quitter Docker Desktop, **renommer les dossiers** `%LOCALAPPDATA%\Docker\run` et `%LOCALAPPDATA%\docker-secrets-engine` (Docker les recrée), relancer Docker, puis `docker start mlops-control-plane mlops-worker`. Le cluster kind et toutes ses données sont intacts.
+- **Piège évité** : « Reset to factory defaults » aurait **supprimé toutes les images et le cluster kind**. Lire le journal avant de cliquer sur le bouton proposé.
+- **Leçon** : forcer l'arrêt des processus (`Stop-Process -Force`) recrée le problème ; il faut écarter les deux dossiers **en une seule fois**, juste avant le démarrage.

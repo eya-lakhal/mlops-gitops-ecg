@@ -12,3 +12,16 @@ stringData:
   type: helm
   url: ghcr.io/prometheus-community/charts
   enableOCI: "true"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: repo-argo-helm-oci
+  namespace: argocd
+  labels:
+    argocd.argoproj.io/secret-type: repository
+stringData:
+  name: argo-helm
+  type: helm
+  url: ghcr.io/argoproj/argo-helm
+  enableOCI: "true"

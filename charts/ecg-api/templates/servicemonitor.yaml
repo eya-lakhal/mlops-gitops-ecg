@@ -7,6 +7,10 @@ metadata:
   labels:
     {{- include "ecg-api.labels" . | nindent 4 }}
 spec:
+  # Copie ce label de Pod sur chaque métrique : l'analyse canary (Phase 7) peut ainsi
+  # comparer les Pods de la nouvelle version à ceux de la version stable.
+  podTargetLabels:
+    - rollouts-pod-template-hash
   selector:
     matchLabels:
       {{- include "ecg-api.selectorLabels" . | nindent 6 }}
