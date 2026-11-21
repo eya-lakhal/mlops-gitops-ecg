@@ -68,6 +68,29 @@ scannée et écrit son tag dans Git. ArgoCD tire cet état et l'applique. Un ret
 | Canary (Argo Rollouts) | modèle v4 promu en 5 min après analyse Prometheus réussie ; une 1re tentative mal calibrée a été **annulée automatiquement** |
 | Sécurité IaC | Trivy a bloqué une API Kubernetes ouverte à Internet (CRITICAL) avant tout déploiement |
 
+## Aperçu
+
+**Grafana : SLO et budget d'erreur.** Le modèle servi est la **v4**, déployée par canary. La disponibilité mesurée
+(98,36 %) et le budget négatif (-64 %) sont la trace de l'exercice de chaos : 30 % d'erreurs volontaires sur un volume
+de trafic encore faible suffisent à dépasser le budget « mensuel ». Le SLO joue son rôle : il rend visible le coût
+d'un incident. Burn rate actuel : 0, donc aucune erreur dans l'heure écoulée.
+
+![Dashboard Grafana : SLO, budget d'erreur, burn rate et modèle servi](docs/images/grafana-slo.png)
+
+**Grafana : signaux RED et signaux du modèle.** Pic de 40 req/s pendant le test k6 (10:00), puis trafic constant
+pendant le canary (10:20-10:35) ; latence p95 de l'ordre de 10 ms ; part d'anomalies prédites et confiance moyenne du modèle.
+
+![Dashboard Grafana : trafic, latence, classes prédites et confiance](docs/images/grafana-red-modele.png)
+
+**ArgoCD : application `ecg-api-dev`.** *Synced* et *Healthy* sur le dernier commit, synchronisée automatiquement. On voit
+le Rollout, l'AnalysisTemplate du canary et les trois révisions (v1 stable, canary annulé, canary promu).
+
+![ArgoCD : arbre des ressources de ecg-api-dev](docs/images/argocd-ecg-api-dev.png)
+
+**MLflow : comparaison des 5 runs** (poids de classe, perte d'entraînement) qui ont mené au modèle v4.
+
+![MLflow : comparaison des runs](docs/images/mlflow-comparaison-runs.png)
+
 ## Les 10 phases
 
 | # | Phase | Où regarder |
