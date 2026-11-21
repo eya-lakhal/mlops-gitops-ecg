@@ -1,10 +1,10 @@
 {
   "model_name": "ecg-cnn-bilstm",
-  "version": "1",
+  "version": "4",
   "alias": "champion",
-  "run_id": "fe63930374b5465a8157158067425e55",
-  "git_commit": "dc32e7f",
-  "exported_at": "2026-11-18T21:25:55+00:00",
+  "run_id": "19b6827cef5348b190f9a50e13635bf9",
+  "git_commit": "f77f187",
+  "exported_at": "2026-11-21T09:00:46+00:00",
   "classes": [
     "N",
     "S",
@@ -21,20 +21,20 @@
     "dropout": 0.3
   },
   "metrics": {
-    "test_F_f1": 0.0,
-    "test_F_precision": 0.0,
-    "test_F_recall": 0.0,
-    "test_N_f1": 0.9489,
-    "test_N_precision": 0.9424,
-    "test_N_recall": 0.9555,
-    "test_S_f1": 0.0,
-    "test_S_precision": 0.0,
-    "test_S_recall": 0.0,
-    "test_V_f1": 0.7591,
-    "test_V_precision": 0.6734,
-    "test_V_recall": 0.8698,
-    "test_accuracy": 0.9072,
-    "test_macro_f1": 0.427
+    "test_F_f1": 0.0021,
+    "test_F_precision": 0.0018,
+    "test_F_recall": 0.0026,
+    "test_N_f1": 0.9239,
+    "test_N_precision": 0.9473,
+    "test_N_recall": 0.9017,
+    "test_S_f1": 0.0774,
+    "test_S_precision": 0.058,
+    "test_S_recall": 0.1166,
+    "test_V_f1": 0.8695,
+    "test_V_precision": 0.8559,
+    "test_V_recall": 0.8835,
+    "test_accuracy": 0.8644,
+    "test_macro_f1": 0.4682
   },
-  "sha256": "298217c34d862b8caad248374bcc51ddbb7e9cbdcb5b521cb515ded0770cbfe3"
+  "sha256": "35c16ece466af4cd38044874759b749448f6c2f0550f957933f9e035a91a1588"
 }
