@@ -17,7 +17,7 @@ spec:
     - name: taux-de-succes
       initialDelay: {{ .Values.rollout.analysis.initialDelay }}
       interval: {{ .Values.rollout.analysis.interval }}
-      failureLimit: 1
+      failureLimit: {{ .Values.rollout.analysis.failureLimit }}
       successCondition: result[0] >= {{ .Values.slo.objective }}
       provider:
         prometheus:
@@ -31,7 +31,7 @@ spec:
     - name: latence-p95
       initialDelay: {{ .Values.rollout.analysis.initialDelay }}
       interval: {{ .Values.rollout.analysis.interval }}
-      failureLimit: 1
+      failureLimit: {{ .Values.rollout.analysis.failureLimit }}
       successCondition: result[0] <= {{ .Values.slo.latencyThresholdSeconds }}
       provider:
         prometheus:
@@ -45,7 +45,7 @@ spec:
     - name: confiance-modele
       initialDelay: {{ .Values.rollout.analysis.initialDelay }}
       interval: {{ .Values.rollout.analysis.interval }}
-      failureLimit: 1
+      failureLimit: {{ .Values.rollout.analysis.failureLimit }}
       successCondition: result[0] >= {{ .Values.rollout.analysis.minConfidence }}
       provider:
         prometheus:

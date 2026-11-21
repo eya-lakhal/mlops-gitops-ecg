@@ -94,3 +94,13 @@ du README final. Format : symptôme → cause → solution → leçon.
 - **Solution** : quitter Docker Desktop, **renommer les dossiers** `%LOCALAPPDATA%\Docker\run` et `%LOCALAPPDATA%\docker-secrets-engine` (Docker les recrée), relancer Docker, puis `docker start mlops-control-plane mlops-worker`. Le cluster kind et toutes ses données sont intacts.
 - **Piège évité** : « Reset to factory defaults » aurait **supprimé toutes les images et le cluster kind**. Lire le journal avant de cliquer sur le bouton proposé.
 - **Leçon** : forcer l'arrêt des processus (`Stop-Process -Force`) recrée le problème ; il faut écarter les deux dossiers **en une seule fois**, juste avant le démarrage.
+
+## Phase 7 : canary
+
+### Premier canary du modèle v4 annulé à tort (faux négatif de l'analyse)
+- **Symptôme** : 1 min 20 après le début du canary : `RolloutAborted … Metric "confiance-modele" assessed Failed due to failed (2) > failureLimit (1)`, avec des mesures `NaN` ; les deux autres métriques renvoyaient « no data ». Le Rollout est revenu seul à 100 % sur la version stable.
+- **Ce qui a bien marché** : la sécurité. Dans le doute, la nouvelle version a été retirée, sans intervention.
+- **Cause** : l'analyse commençait 1 min après la création du Pod canary. Or le Pod met ~60 s à démarrer (import de torch), puis il faut au moins 2 collectes Prometheus (toutes les 15 s) dans la fenêtre de `rate()`. Les premières mesures valaient donc « pas de données » ou `0/0 = NaN`, et `NaN >= 0.6` est faux.
+- **Vérifications** : le label `rollouts_pod_template_hash` était bien présent sur les métriques (`podTargetLabels` fonctionnel) et le trafic k6 bien réparti (~2,5 req/s par Pod).
+- **Solution** : `initialDelay: 2m30s` (démarrage + collectes + fenêtre) et `failureLimit` paramétrable ; correction poussée par Git, ce qui a relancé un nouveau canary.
+- **Leçon** : une analyse automatique doit attendre que la mesure soit *possible* avant de la juger. Distinguer « mauvaise valeur » et « pas encore de valeur » est le même problème que l'alerte `EcgApiDown` et que le générateur de trafic silencieux du postmortem.
