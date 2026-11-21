@@ -87,6 +87,17 @@ le Rollout, l'AnalysisTemplate du canary et les trois révisions (v1 stable, can
 
 ![ArgoCD : arbre des ressources de ecg-api-dev](docs/images/argocd-ecg-api-dev.png)
 
+**Argo Rollouts : le canary du modèle v4.** Révision 3 (modèle v4) promue à 100 % sur 2 Pods ; révision 2 (premier
+canary, annulé par l'analyse) et révision 1 (modèle v1) réduites à zéro Pod, mais conservées pour un retour arrière.
+
+![Argo Rollouts : révisions du canary](docs/images/argo-rollouts-canary.png)
+
+**Discord : alertes de l'exercice de chaos.** Alerte lente en *firing*, puis résolution de l'alerte critique, chaque
+message avec son lien vers le runbook. Le message de 04:32 est un **rappel** : l'alerte lente était toujours active
+(sa fenêtre de 6 h contenait encore les erreurs), et Alertmanager renvoie toutes les 4 h (`repeat_interval`) une alerte non résolue.
+
+![Discord : notifications Alertmanager firing et resolved](docs/images/discord-alertes.png)
+
 **MLflow : comparaison des 5 runs** (poids de classe, perte d'entraînement) qui ont mené au modèle v4.
 
 ![MLflow : comparaison des runs](docs/images/mlflow-comparaison-runs.png)
